@@ -9,6 +9,7 @@ from ..environment import Environment
 from ..network import Network
 from ..network.nodes import AbstractInput
 from ..network.monitors import Monitor
+from gym import spaces as gym_spaces
 
 
 class EnvironmentPipeline(BasePipeline):
@@ -19,11 +20,11 @@ class EnvironmentPipeline(BasePipeline):
     """
 
     def __init__(
-        self,
-        network: Network,
-        environment: Environment,
-        action_function: Optional[Callable] = None,
-        **kwargs,
+            self,
+            network: Network,
+            environment: Environment,
+            action_function: Optional[Callable] = None,
+            **kwargs,
     ):
         # language=rst
         """
@@ -84,10 +85,14 @@ class EnvironmentPipeline(BasePipeline):
             self.network.add_monitor(
                 Monitor(self.network.layers[self.output], ["s"]), self.output
             )
-
-            self.spike_record = {
-                self.output: torch.zeros((self.time, self.env.action_space.n))
-            }
+            if type(self.env.action_space) == gym_spaces.box.Box:
+                self.spike_record = {
+                    self.output: torch.zeros((self.time, self.env.action_space.shape[0]))
+                }
+            elif type(self.env.action_space) == gym_spaces.discrete.Discrete:
+                self.spike_record = {
+                    self.output: torch.zeros((self.time, self.env.action_space.n))
+                }
 
     def init_fn(self) -> None:
         pass
@@ -125,8 +130,8 @@ class EnvironmentPipeline(BasePipeline):
         """
         # Render game.
         if (
-            self.render_interval is not None
-            and self.step_count % self.render_interval == 0
+                self.render_interval is not None
+                and self.step_count % self.render_interval == 0
         ):
             self.env.render()
 
@@ -150,7 +155,7 @@ class EnvironmentPipeline(BasePipeline):
         return obs, reward, done, info
 
     def step_(
-        self, gym_batch: Tuple[torch.Tensor, float, bool, Dict], **kwargs
+            self, gym_batch: Tuple[torch.Tensor, float, bool, Dict], **kwargs
     ) -> None:
         # language=rst
         """

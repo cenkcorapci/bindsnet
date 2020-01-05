@@ -2,6 +2,8 @@ import torch
 import numpy as np
 
 from . import EnvironmentPipeline
+from numpy import ndarray
+from typing import Union
 
 
 def select_multinomial(pipeline: EnvironmentPipeline, **kwargs) -> int:
@@ -27,7 +29,7 @@ def select_multinomial(pipeline: EnvironmentPipeline, **kwargs) -> int:
     action_space = pipeline.env.action_space
 
     assert (
-        output.n % action_space.n == 0
+            output.n % action_space.n == 0
     ), f"Output layer size of {output.n} is not divisible by action space size of {action_space.n}."
 
     pop_size = int(output.n / action_space.n)
@@ -40,7 +42,7 @@ def select_multinomial(pipeline: EnvironmentPipeline, **kwargs) -> int:
     else:
         pop_spikes = torch.tensor(
             [
-                spikes[(i * pop_size) : (i * pop_size) + pop_size].sum()
+                spikes[(i * pop_size): (i * pop_size) + pop_size].sum()
                 for i in range(action_space.n)
             ]
         )
@@ -68,7 +70,7 @@ def select_softmax(pipeline: EnvironmentPipeline, **kwargs) -> int:
         raise KeyError('select_softmax() requires an "output" layer argument.')
 
     assert (
-        pipeline.network.layers[output].n == pipeline.env.action_space.n
+            pipeline.network.layers[output].n == pipeline.env.action_space.n
     ), "Output layer size is not equal to the size of the action space."
 
     assert hasattr(
@@ -78,6 +80,36 @@ def select_softmax(pipeline: EnvironmentPipeline, **kwargs) -> int:
     spikes = torch.sum(pipeline.spike_record[output], dim=0)
     probabilities = torch.softmax(spikes, dim=0)
     return torch.multinomial(probabilities, num_samples=1).item()
+
+
+def select_tanh(pipeline: EnvironmentPipeline, **kwargs) -> ndarray:
+    # language=rst
+    """
+    Selects an actions using tanh function based on spiking from a network layer.
+
+    :param pipeline: EnvironmentPipeline with environment that has a ndarray action
+        space and :code:`spike_record` set.
+    :return: Action generated with tanh layer from activity of similarly-sized output layer.
+
+    Keyword arguments:
+
+    :param str output: Name of output layer whose activity to base action selection on.
+    """
+    try:
+        output = kwargs["output"]
+    except KeyError:
+        raise KeyError('select_tanh() requires an "output" layer argument.')
+
+    assert (
+            pipeline.network.layers[output].n == pipeline.env.action_space.shape[0]
+    ), "Output layer size is not equal to the size of the action space."
+
+    assert hasattr(
+        pipeline, "spike_record"
+    ), "EnvironmentPipeline is missing the attribute: spike_record."
+
+    spikes = torch.sum(pipeline.spike_record[output], dim=0)
+    return torch.tanh(spikes).numpy()
 
 
 def select_random(pipeline: EnvironmentPipeline, **kwargs) -> int:

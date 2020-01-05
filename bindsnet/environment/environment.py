@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Tuple, Dict, Any
+from typing import Union
 
 import gym
 import numpy as np
 import torch
+from numpy import ndarray
 
 from ..datasets.preprocess import subsample, gray_scale, binary_image, crop
 from ..encoding import Encoder, NullEncoder
@@ -16,7 +18,7 @@ class Environment(ABC):
     """
 
     @abstractmethod
-    def step(self, a: int) -> Tuple[Any, ...]:
+    def step(self, a: Union[int, ndarray]) -> Tuple[Any, ...]:
         # language=rst
         """
         Abstract method head for ``step()``.
@@ -115,10 +117,10 @@ class GymEnvironment(Environment):
         self.reward = None
 
         assert (
-            0.0 < self.max_prob <= 1.0
+                0.0 < self.max_prob <= 1.0
         ), "Maximum spiking probability must be in (0, 1]."
 
-    def step(self, a: int) -> Tuple[torch.Tensor, float, bool, Dict[Any, Any]]:
+    def step(self, a: Union[int, ndarray]) -> Tuple[torch.Tensor, float, bool, Dict[Any, Any]]:
         # language=rst
         """
         Wrapper around the OpenAI ``gym`` environment ``step()`` function.
@@ -237,7 +239,7 @@ class GymEnvironment(Environment):
                 self.history[self.history_index] = self.obs
 
             assert (
-                len(self.history) == self.history_length
+                    len(self.history) == self.history_length
             ), "History size is out of bounds"
             self.obs = temp
 
